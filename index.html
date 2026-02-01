@@ -1069,6 +1069,7 @@
             currentMode: null,
             currentSession: [],
             sessionIndex: 0,
+            sessionStats: { correct: 0, wrong: 0, points: 0 }, // Track session performance
             
             // User Progress
             progress: {
@@ -1327,6 +1328,13 @@
             recordStudy(word, correct) {
                 const today = new Date().toISOString().split('T')[0];
                 
+                // Update session stats
+                if (correct) {
+                    this.sessionStats.correct++;
+                } else {
+                    this.sessionStats.wrong++;
+                }
+                
                 // Update activity
                 if (!this.progress.activity[today]) {
                     this.progress.activity[today] = 0;
@@ -1350,6 +1358,7 @@
                     // Award points
                     const points = wordProgress.level * 10;
                     this.progress.stats.points += points;
+                    this.sessionStats.points += points;
                     this.progress.stats.correctAnswers++;
                     
                 } else {
@@ -1408,6 +1417,7 @@
             // Start learning session
             startLearningSession() {
                 this.currentSession = this.getWordsToReview().slice(0, 20);
+                this.sessionStats = { correct: 0, wrong: 0, points: 0 }; // Reset session stats
                 if (this.currentSession.length === 0) {
                     this.showNotification('Aucun mot à réviser pour le moment ! 🎉', 'info');
                     return;
@@ -1421,6 +1431,7 @@
             selectMode(mode) {
                 this.currentMode = mode;
                 this.sessionIndex = 0;
+                this.sessionStats = { correct: 0, wrong: 0, points: 0 }; // Reset session stats
                 
                 // Update UI
                 document.querySelectorAll('.mode-card').forEach(card => card.classList.remove('active'));
@@ -1774,6 +1785,8 @@
                             <div class="setting-title">📊 Résumé</div>
                             <div style="font-size: 1.2rem;">
                                 <p style="margin: 10px 0;">Mots révisés : <strong>${stats.total}</strong></p>
+                                <p style="margin: 10px 0;">Bonnes réponses : <strong style="color: var(--success)">${this.sessionStats.correct}</strong></p>
+                                <p style="margin: 10px 0;">Erreurs : <strong style="color: var(--danger)">${this.sessionStats.wrong}</strong></p>
                                 <p style="margin: 10px 0;">Taux de réussite : <strong>${stats.accuracy}%</strong></p>
                                 <p style="margin: 10px 0;">Points gagnés : <strong>+${stats.points}</strong></p>
                             </div>
@@ -1788,21 +1801,26 @@
                     </div>
                 `;
 
-                if (this.progress.settings.animations) {
+                if (this.progress.settings.animations && stats.accuracy >= 80) {
                     this.triggerConfetti();
                 }
 
                 this.currentSession = [];
                 this.sessionIndex = 0;
+                this.sessionStats = { correct: 0, wrong: 0, points: 0 }; // Reset
             },
 
             // Calculate session stats
             calculateSessionStats() {
-                // Mock stats for now
+                const total = this.sessionStats.correct + this.sessionStats.wrong;
+                const accuracy = total > 0 
+                    ? Math.round((this.sessionStats.correct / total) * 100)
+                    : 0;
+
                 return {
-                    total: this.currentSession.length,
-                    accuracy: 85,
-                    points: this.currentSession.length * 10
+                    total: total,
+                    accuracy: accuracy,
+                    points: this.sessionStats.points
                 };
             },
 
