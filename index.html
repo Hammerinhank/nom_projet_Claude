@@ -824,6 +824,136 @@
             display: none !important;
         }
 
+        /* Notifications Panel */
+        #notifications-panel {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 350px;
+            max-height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000;
+            overflow: hidden;
+            display: none;
+        }
+
+        .dark-mode #notifications-panel {
+            background: var(--card-dark);
+        }
+
+        #notifications-panel.show {
+            display: block;
+            animation: slideInRight 0.3s;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notif-header {
+            padding: 20px;
+            border-bottom: 2px solid var(--bg-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dark-mode .notif-header {
+            border-bottom-color: var(--bg-dark);
+        }
+
+        .notif-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .notif-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-light);
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dark-mode .notif-close {
+            background: var(--bg-dark);
+        }
+
+        .notif-body {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notif-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--bg-light);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .dark-mode .notif-item {
+            border-bottom-color: var(--bg-dark);
+        }
+
+        .notif-item:hover {
+            background: var(--bg-light);
+        }
+
+        .dark-mode .notif-item:hover {
+            background: var(--bg-dark);
+        }
+
+        .notif-item-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+
+        .notif-item-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .notif-item-desc {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .notif-empty {
+            padding: 40px 20px;
+            text-align: center;
+            opacity: 0.6;
+        }
+
+        .notif-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Section Selector */
         .section-pills {
             display: flex;
@@ -865,7 +995,10 @@
             <div class="logo">📚 Vocab Pro</div>
             <div class="header-icons">
                 <button class="icon-btn" onclick="app.toggleDarkMode()" title="Mode sombre">🌙</button>
-                <button class="icon-btn" onclick="app.showNotification('Fonctionnalité à venir !', 'info')" title="Notifications">🔔</button>
+                <button class="icon-btn" onclick="app.toggleNotifications()" title="Notifications" style="position: relative;">
+                    🔔
+                    <span id="notif-badge" class="notif-badge" style="display: none;">0</span>
+                </button>
             </div>
         </div>
 
@@ -1052,10 +1185,21 @@
                 <div class="setting-group">
                     <div class="setting-title">ℹ️ À propos</div>
                     <p style="opacity: 0.8; margin-bottom: 10px;">Vocab Pro - Apprentissage intelligent du vietnamien</p>
-                    <p style="opacity: 0.6; font-size: 0.9rem;">Version 2.1 - Statistiques de session corrigées</p>
+                    <p style="opacity: 0.6; font-size: 0.9rem;">Version 2.2 - Panneau de notifications intelligent</p>
                     <p style="opacity: 0.6; font-size: 0.85rem; margin-top: 5px;">Conçu avec ❤️ par Claude</p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Notifications Panel -->
+    <div id="notifications-panel">
+        <div class="notif-header">
+            <div class="notif-title">🔔 Notifications</div>
+            <button class="notif-close" onclick="app.toggleNotifications()">✕</button>
+        </div>
+        <div class="notif-body" id="notif-body">
+            <!-- Notifications will be inserted here -->
         </div>
     </div>
 
@@ -1118,6 +1262,7 @@
                 this.updateDashboard();
                 this.checkBadges();
                 this.updateStreak();
+                this.updateNotificationBadge(this.getNotifications().length); // Show notification count
             },
 
             // Load data from Gist
@@ -1949,6 +2094,161 @@
             toggleDarkMode() {
                 document.body.classList.toggle('dark-mode');
                 localStorage.setItem('dark-mode', document.body.classList.contains('dark-mode'));
+            },
+
+            // Toggle Notifications Panel
+            toggleNotifications() {
+                const panel = document.getElementById('notifications-panel');
+                panel.classList.toggle('show');
+                
+                if (panel.classList.contains('show')) {
+                    this.renderNotifications();
+                }
+            },
+
+            // Render Notifications
+            renderNotifications() {
+                const body = document.getElementById('notif-body');
+                const notifications = this.getNotifications();
+
+                if (notifications.length === 0) {
+                    body.innerHTML = `
+                        <div class="notif-empty">
+                            <div style="font-size: 3rem; margin-bottom: 10px;">✅</div>
+                            <div>Aucune notification</div>
+                        </div>
+                    `;
+                    this.updateNotificationBadge(0);
+                    return;
+                }
+
+                body.innerHTML = notifications.map(notif => `
+                    <div class="notif-item" onclick="app.handleNotificationClick('${notif.action}', '${notif.data}')">
+                        <div style="display: flex; align-items: center;">
+                            <span class="notif-item-icon">${notif.icon}</span>
+                            <div style="flex: 1;">
+                                <div class="notif-item-title">${notif.title}</div>
+                                <div class="notif-item-desc">${notif.desc}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                this.updateNotificationBadge(notifications.length);
+            },
+
+            // Get Notifications
+            getNotifications() {
+                const notifications = [];
+                const wordsToReview = this.getWordsToReview();
+                const today = new Date().toISOString().split('T')[0];
+
+                // Check if user studied today
+                if (!this.progress.stats.lastStudyDate || this.progress.stats.lastStudyDate !== today) {
+                    const dailyGoal = this.progress.settings.dailyGoal;
+                    notifications.push({
+                        icon: '🎯',
+                        title: 'Objectif quotidien',
+                        desc: `Vous avez ${dailyGoal} mots à réviser aujourd'hui`,
+                        action: 'start-session',
+                        data: ''
+                    });
+                }
+
+                // Words ready to review
+                if (wordsToReview.length > 0) {
+                    notifications.push({
+                        icon: '⏰',
+                        title: `${wordsToReview.length} mots prêts`,
+                        desc: 'Ces mots sont prêts à être révisés',
+                        action: 'start-session',
+                        data: ''
+                    });
+                }
+
+                // Streak warning
+                if (this.progress.stats.streak >= 3) {
+                    const lastStudy = this.progress.stats.lastStudyDate;
+                    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                    
+                    if (lastStudy !== today && lastStudy !== yesterday) {
+                        notifications.push({
+                            icon: '🔥',
+                            title: 'Série en danger !',
+                            desc: `Votre série de ${this.progress.stats.streak} jours va se perdre`,
+                            action: 'start-session',
+                            data: ''
+                        });
+                    }
+                }
+
+                // New badges available
+                const unlockedBadges = this.checkPendingBadges();
+                if (unlockedBadges.length > 0) {
+                    notifications.push({
+                        icon: '🏆',
+                        title: 'Nouveau badge proche !',
+                        desc: `Vous êtes proche de débloquer "${unlockedBadges[0].name}"`,
+                        action: 'view-badges',
+                        data: ''
+                    });
+                }
+
+                // Milestone reached
+                const totalLearned = Object.values(this.progress.words).filter(w => w.level >= 3).length;
+                const milestones = [10, 25, 50, 75, 100, 150, 200];
+                const nextMilestone = milestones.find(m => m > totalLearned);
+                
+                if (nextMilestone && totalLearned >= nextMilestone - 5) {
+                    notifications.push({
+                        icon: '⭐',
+                        title: `Proche des ${nextMilestone} mots !`,
+                        desc: `Plus que ${nextMilestone - totalLearned} mots à apprendre`,
+                        action: 'start-session',
+                        data: ''
+                    });
+                }
+
+                return notifications;
+            },
+
+            // Check pending badges (badges almost unlocked)
+            checkPendingBadges() {
+                return this.badges.filter(badge => {
+                    if (this.progress.badges.includes(badge.id)) return false;
+                    // Check if close to unlocking (simplified logic)
+                    return false; // For now, return none
+                });
+            },
+
+            // Handle Notification Click
+            handleNotificationClick(action, data) {
+                this.toggleNotifications(); // Close panel
+                
+                switch(action) {
+                    case 'start-session':
+                        this.startLearningSession();
+                        break;
+                    case 'view-badges':
+                        this.switchTab('stats');
+                        break;
+                    case 'view-stats':
+                        this.switchTab('stats');
+                        break;
+                    default:
+                        break;
+                }
+            },
+
+            // Update Notification Badge
+            updateNotificationBadge(count) {
+                const badge = document.getElementById('notif-badge');
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
             },
 
             // Toggle Setting
